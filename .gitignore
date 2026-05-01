@@ -1,25 +1,23 @@
 # Dependencies
 node_modules/
 
-# Environment files
+# Environment variables
 .env
 .env.local
+.env.development
 .env.production
 
-# Build output
+# Build outputs
 dist/
 build/
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
+# Logs
+*.log
+npm-debug.log*
+
+# Vite
+client/dist/
