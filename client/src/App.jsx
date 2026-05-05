@@ -3,8 +3,8 @@ import SplashScreen       from "./pages/SplashScreen";
 import AuthScreen         from "./pages/AuthScreen";
 import PersonalInfoScreen from "./pages/PersonalInfoScreen";
 import ProfileDisplay     from "./pages/ProfileDisplay";
-import MediTrackDashboard from "./pages/dashboard/MediTrackDashboard";
-import CaregiverDashboard from "./pages/dashboard/CaregiverDashboard";
+import MediTrackDashboard from "./dashboards/MediTrackDashboard";
+import CaregiverDashboard from "./dashboards/CaregiverDashboard";
 import { getMedicationsAPI }  from "./api/medicationAPI";
 import { getPatientDataAPI }  from "./api/caregiverAPI";
 
