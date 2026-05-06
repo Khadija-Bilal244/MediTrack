@@ -1,12 +1,12 @@
 import { useState } from "react";
-import SplashScreen       from "./pages/SplashScreen.jsx";
-import AuthScreen         from "./pages/AuthScreen.jsx";
-import PersonalInfoScreen from "./pages/PersonalInfoScreen.jsx";
-import ProfileDisplay     from "./pages/ProfileDisplay.jsx";
-import MediTrackDashboard from "./dashboards/MediTrackDashboard.jsx";
-import CaregiverDashboard from "./dashboards/CaregiverDashboard.jsx";
-import { getMedicationsAPI }  from "./api/medicationAPI.js";
-import { getPatientDataAPI }  from "./api/caregiverAPI.js";
+import SplashScreen       from "./pages/SplashScreen";
+import AuthScreen         from "./pages/AuthScreen";
+import PersonalInfoScreen from "./pages/PersonalInfoScreen";
+import ProfileDisplay     from "./pages/ProfileDisplay";
+import MediTrackDashboard from "./dashboards/MediTrackDashboard";
+import CaregiverDashboard from "./dashboards/CaregiverDashboard";
+import { getMedicationsAPI }  from "./api/medicationAPI";
+import { getPatientDataAPI }  from "./api/caregiverAPI";
 
 export default function App() {
   const [screen, setScreen]               = useState("splash");
