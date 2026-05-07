@@ -8,6 +8,7 @@ import authRoutes       from "../adapters/http/routes/authRoutes.js";
 import medicationRoutes from "../adapters/http/routes/medicationRoutes.js";
 import sideEffectRoutes from "../adapters/http/routes/sideEffectRoutes.js";
 import caregiverRoutes  from "../adapters/http/routes/caregiverRoutes.js";
+import heartRiskRoutes  from "../adapters/http/routes/heartRiskRoutes.js";  // ← NEW
 
 dotenv.config();
 connectDB();
@@ -17,7 +18,7 @@ const app  = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "https://heartfelt-cassata-7d0377.netlify.app/"],
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
 }));
 app.use(express.json());
@@ -26,6 +27,7 @@ app.use("/api/auth",        authRoutes);
 app.use("/api/medications", medicationRoutes);
 app.use("/api/sideeffects", sideEffectRoutes);
 app.use("/api/caregivers",  caregiverRoutes);
+app.use("/api/heart-risk",  heartRiskRoutes);   // ← NEW
 
 app.get("/", (req, res) => res.json({ message: "MediTrack API running" }));
 
