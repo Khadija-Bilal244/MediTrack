@@ -5,6 +5,7 @@ import Home        from "../pages/dashboard/Home";
 import Medications from "../pages/dashboard/Medications";
 import SideEffects from "../pages/dashboard/SideEffects";
 import Reports     from "../pages/dashboard/Reports";
+import HeartRisk   from "../pages/dashboard/HeartRisk";   // ← NEW
 import Caregivers  from "../pages/dashboard/Caregivers";
 import { markTakenAPI, getMedicationsAPI, autoMarkMissedAPI } from "../api/medicationAPI";
 
@@ -42,15 +43,12 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
   useEffect(() => {
     const initLoad = async () => {
       try {
-        // First fetch current state
         const res = await getMedicationsAPI();
         if (res.data) setMeds(res.data);
       } catch (err) {
         console.error("Init load failed:", err);
       }
       try {
-        // Then immediately mark any meds that are already 30+ min overdue
-        // This handles: user opens app after med time has passed
         const missRes = await autoMarkMissedAPI();
         if (missRes.data) setMeds(missRes.data);
       } catch (err) {
@@ -67,7 +65,7 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
       if (currentDate !== lastDateRef.current) {
         lastDateRef.current = currentDate;
         try {
-          setMeds([]);                              // clear stale state immediately
+          setMeds([]);
           const res = await getMedicationsAPI();
           setMeds(res.data || []);
           push("info", "🌅", "Good Morning!", "Your medications have been reset for today.");
@@ -96,7 +94,6 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
         const dueAt   = parseMedTime(med.time);
         const diffMin = (now - dueAt) / 60000;
 
-        // Due now — fires within 0–30 min window so user gets reminder even if they open app late
         const remKey = `notif-reminder-${med._id || med.id}-${new Date().toDateString()}`;
         if (diffMin >= 0 && diffMin < 30 && !fired.has(remKey)) {
           fired.add(remKey);
@@ -107,7 +104,6 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
           );
         }
 
-        // 30 min overdue notification
         const missKey = `notif-missed-${med._id || med.id}-${new Date().toDateString()}`;
         if (diffMin >= 30 && !fired.has(missKey)) {
           fired.add(missKey);
@@ -118,7 +114,6 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
         }
       });
 
-      // Call autoMarkMissed in DB only when something is newly overdue
       if (anyNewMissed) {
         try {
           const missRes = await autoMarkMissedAPI();
@@ -221,6 +216,7 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
         {activeNav === "Medications"  && <Medications meds={meds} setMeds={setMeds} />}
         {activeNav === "Side Effects" && <SideEffects meds={meds} />}
         {activeNav === "Reports"      && <Reports />}
+        {activeNav === "Heart Risk"   && <HeartRisk />}    {/* ← NEW */}
         {activeNav === "Caregivers"   && <Caregivers />}
 
       </main>
