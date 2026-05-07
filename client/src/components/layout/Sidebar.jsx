@@ -16,7 +16,7 @@ export default function Sidebar({ activeNav, setActiveNav, adherencePct, takenCo
       </div>
 
       {/* Nav items */}
-      <nav className="mt-sidebar-nav" style={{ flex: 1, padding: "0 12px", overflowY: "auto" }}>
+      <nav className="mt-sidebar-nav" style={{ flex: 1, padding: "0 12px", overflowY: "hidden" }}>
         {NAV_ITEMS.map(({ label, icon }) => {
           const active = activeNav === label;
           return (
@@ -24,7 +24,7 @@ export default function Sidebar({ activeNav, setActiveNav, adherencePct, takenCo
               key={label}
               onClick={() => setActiveNav(label)}
               data-active={active ? "true" : "false"}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: "14px", padding: "18px 16px", marginBottom: "4px", borderRadius: "14px", border: "none", cursor: "pointer", background: active ? "rgba(255,255,255,0.18)" : "transparent", color: active ? "#fff" : "rgba(255,255,255,0.6)", fontWeight: active ? "700" : "500", fontSize: "15px", fontFamily: "inherit", textAlign: "left" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: "14px", padding: "12px 16px", marginBottom: "2px", borderRadius: "14px", border: "none", cursor: "pointer", background: active ? "rgba(255,255,255,0.18)" : "transparent", color: active ? "#fff" : "rgba(255,255,255,0.6)", fontWeight: active ? "700" : "500", fontSize: "15px", fontFamily: "inherit", textAlign: "left" }}
             >
               <span style={{ fontSize: "15px" }}>{icon}</span>
               <span>{label}</span>
