@@ -140,6 +140,7 @@ export default function App() {
       {screen === "app" && userData && (
         <MediTrackDashboard
           user={userData}
+          setUser={setUserData}
           meds={sharedMeds}
           setMeds={setSharedMeds}
           onSignOut={handlePatientSignOut}
