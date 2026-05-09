@@ -1,6 +1,8 @@
-import cron            from "node-cron";
+import cron              from "node-cron";
 import MedicationModel   from "../adapters/db/models/MedicationModel.js";
 import AdherenceLogModel from "../adapters/db/models/AdherenceLogModel.js";
+import UserModel         from "../adapters/db/models/UserModel.js";
+import { sendReminderEmail } from "./emailService.js";
 
 /** Return "YYYY-MM-DD" for a Date object in Karachi local time */
 const toKarachiDateStr = (date) => {
@@ -12,10 +14,6 @@ const toKarachiDateStr = (date) => {
   );
 };
 
-/**
- * Parse a time string like "02:00 PM" and return a Date representing
- * that time TODAY in Karachi timezone.
- */
 const parseMedTimeKarachi = (timeStr) => {
   if (!timeStr) return new Date();
   const [timePart, period] = timeStr.trim().split(" ");
@@ -29,9 +27,12 @@ const parseMedTimeKarachi = (timeStr) => {
   return new Date(isoStr);
 };
 
+// In-memory set to track which meds have already had an email sent today
+// Key: "<medId>-<YYYY-MM-DD>"  — cleared automatically at midnight reset
+const emailSentToday = new Set();
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Every minute — mark overdue meds as missed directly in DB (server-side)
-// This runs regardless of whether any user is logged in.
+// Every minute — mark overdue meds as missed + send email reminders
 // ─────────────────────────────────────────────────────────────────────────────
 const markOverdueMissed = async () => {
   try {
@@ -40,10 +41,25 @@ const markOverdueMissed = async () => {
 
     const meds = await MedicationModel.find({ taken: false, missed: false });
 
+    console.log(`🔍 Scheduler tick — ${meds.length} active med(s) found`);
+
+    // Group meds that are due (0–5 min window) and haven't been emailed yet
+    const emailBatch = {};  // { userId: [med, ...] }
+
     for (const med of meds) {
       const dueAt   = parseMedTimeKarachi(med.time);
       const diffMin = (now - dueAt) / 60000;
 
+      console.log(`  💊 ${med.name} | due: ${med.time} | diffMin: ${diffMin.toFixed(2)}`);
+
+      // ── Email window: 0 to 5 minutes past due ──────────────────────────
+      const sentKey = `${med._id}-${todayStr}`;
+      if (diffMin >= 0 && diffMin < 5 && !emailSentToday.has(sentKey)) {
+        if (!emailBatch[med.userId]) emailBatch[med.userId] = [];
+        emailBatch[med.userId].push({ med, sentKey });
+      }
+
+      // ── Mark missed after 30 min ────────────────────────────────────────
       if (diffMin < 30) continue;
 
       await MedicationModel.findByIdAndUpdate(med._id, { missed: true });
@@ -51,79 +67,82 @@ const markOverdueMissed = async () => {
       try {
         await AdherenceLogModel.findOneAndUpdate(
           { userId: med.userId, medId: med._id, date: todayStr },
-          {
-            userId:  med.userId,
-            medId:   med._id,
-            medName: med.name,
-            date:    todayStr,
-            taken:   false,
-            missed:  true,
-          },
+          { userId: med.userId, medId: med._id, medName: med.name, date: todayStr, taken: false, missed: true },
           { upsert: true, new: true }
         );
       } catch (e) {}
 
-      console.log(`💊 Marked missed (server-side): ${med.name} for user ${med.userId}`);
+      console.log(`💊 Marked missed: ${med.name} for user ${med.userId}`);
     }
+
+    // ── Send batched reminder emails ──────────────────────────────────────
+    for (const [userId, entries] of Object.entries(emailBatch)) {
+      try {
+        const user = await UserModel.findById(userId).lean();
+
+        console.log(`📬 Checking user ${userId} — reminderEmail: ${user?.reminderEmail || "NOT SET"}`);
+
+        if (!user?.reminderEmail) {
+          console.log(`⚠️  Skipping email — no reminderEmail set for user ${userId}`);
+          continue;
+        }
+
+        await sendReminderEmail(
+          user.reminderEmail,
+          user.firstName,
+          entries.map(({ med }) => ({ name: med.name, dosage: med.dosage, time: med.time }))
+        );
+
+        // Mark all these meds as emailed so we don't send again this minute cycle
+        entries.forEach(({ sentKey }) => emailSentToday.add(sentKey));
+
+      } catch (emailErr) {
+        console.error(`📧 Email failed for user ${userId}:`, emailErr.message);
+      }
+    }
+
   } catch (err) {
     console.error("markOverdueMissed error:", err.message);
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Midnight — log yesterday, reset meds for new day, delete expired
+// Midnight — log yesterday, reset meds, delete expired, clear email sent set
 // ─────────────────────────────────────────────────────────────────────────────
 const midnightReset = async () => {
   console.log("⏰ Midnight reset running...");
-  try {
-    const nowKarachi  = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
-    const todayStr    = toKarachiDateStr(nowKarachi);
 
-    const yestKarachi = new Date(nowKarachi);
+  // Clear the email-sent tracker for the new day
+  emailSentToday.clear();
+  console.log("📧 Email sent tracker cleared for new day");
+
+  try {
+    const nowKarachi   = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+    const todayStr     = toKarachiDateStr(nowKarachi);
+    const yestKarachi  = new Date(nowKarachi);
     yestKarachi.setDate(yestKarachi.getDate() - 1);
     const yesterdayStr = toKarachiDateStr(yestKarachi);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today        = new Date(); today.setHours(0, 0, 0, 0);
 
     const allMeds = await MedicationModel.find({});
 
-    // Log yesterday for every med — taken as-is, not taken = missed
     for (const med of allMeds) {
       try {
         await AdherenceLogModel.findOneAndUpdate(
           { userId: med.userId, medId: med._id, date: yesterdayStr },
-          {
-            userId:  med.userId,
-            medId:   med._id,
-            medName: med.name,
-            date:    yesterdayStr,
-            taken:   med.taken,
-            missed:  !med.taken,
-          },
+          { userId: med.userId, medId: med._id, medName: med.name, date: yesterdayStr, taken: med.taken, missed: !med.taken },
           { upsert: true, new: true }
         );
       } catch (e) {}
     }
 
-    // Reset ALL medications for the new day
-    const resetResult = await MedicationModel.updateMany(
-      {},
-      { $set: { taken: false, missed: false } }
-    );
+    const resetResult = await MedicationModel.updateMany({}, { $set: { taken: false, missed: false } });
     console.log(`✅ Reset ${resetResult.modifiedCount} medications`);
 
-    // Delete expired meds
-    const nonOngoing = await MedicationModel.find({
-      ongoing:      false,
-      durationDays: { $ne: null },
-    });
-
-    const expired = nonOngoing.filter(med => {
-      const start = new Date(med.startDate);
-      start.setHours(0, 0, 0, 0);
-      const expiry = new Date(start);
-      expiry.setDate(expiry.getDate() + med.durationDays);
+    const nonOngoing = await MedicationModel.find({ ongoing: false, durationDays: { $ne: null } });
+    const expired    = nonOngoing.filter((med) => {
+      const start = new Date(med.startDate); start.setHours(0, 0, 0, 0);
+      const expiry = new Date(start); expiry.setDate(expiry.getDate() + med.durationDays);
       return today >= expiry;
     });
 
@@ -131,14 +150,7 @@ const midnightReset = async () => {
       try {
         await AdherenceLogModel.findOneAndUpdate(
           { userId: med.userId, medId: med._id, date: todayStr },
-          {
-            userId:  med.userId,
-            medId:   med._id,
-            medName: med.name,
-            date:    todayStr,
-            taken:   med.taken,
-            missed:  !med.taken,
-          },
+          { userId: med.userId, medId: med._id, medName: med.name, date: todayStr, taken: med.taken, missed: !med.taken },
           { upsert: true, new: true }
         );
       } catch (e) {}
@@ -153,13 +165,7 @@ const midnightReset = async () => {
 };
 
 export const startScheduler = () => {
-  // Every minute — mark any overdue meds as missed server-side (no client needed)
   cron.schedule("* * * * *", markOverdueMissed);
-
-  // Midnight Karachi — log yesterday, reset for new day
-  cron.schedule("0 0 * * *", midnightReset, {
-    timezone: "Asia/Karachi",
-  });
-
-  console.log("📅 Scheduler started — overdue checker every minute, midnight reset at 00:00 Asia/Karachi");
+  cron.schedule("0 0 * * *", midnightReset, { timezone: "Asia/Karachi" });
+  console.log("📅 Scheduler started — overdue checker + email reminders every minute, midnight reset at 00:00 Asia/Karachi");
 };
