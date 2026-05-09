@@ -61,7 +61,6 @@ export default function App() {
         role:      "caregiver",
         patientId: user.patientId,
       });
-      // Load the patient's real data and medications
       await loadPatientDataForCaregiver();
       setScreen("caregiver");
       return;
@@ -69,13 +68,14 @@ export default function App() {
 
     // Patient login
     setUserData({
-      id:        user.id,
-      firstName: user.firstName,
-      lastName:  user.lastName,
-      email:     user.email,
-      age:       user.age,
-      gender:    user.gender,
-      role:      "patient",
+      id:            user.id,
+      firstName:     user.firstName,
+      lastName:      user.lastName,
+      email:         user.email,
+      age:           user.age,
+      gender:        user.gender,
+      role:          "patient",
+      reminderEmail: user.reminderEmail || null,   // ← fixed
     });
     await loadMeds();
     setScreen("app");
@@ -116,13 +116,14 @@ export default function App() {
           password={authData?.password || ""}
           onComplete={async (info) => {
             setUserData({
-              id:        info.userData?.id || info.userData?._id,
-              firstName: info.firstName,
-              lastName:  info.lastName,
-              email:     authData?.email,
-              age:       info.age,
-              gender:    info.gender,
-              role:      "patient",
+              id:            info.userData?.id || info.userData?._id,
+              firstName:     info.firstName,
+              lastName:      info.lastName,
+              email:         authData?.email,
+              age:           info.age,
+              gender:        info.gender,
+              role:          "patient",
+              reminderEmail: null,   // ← fixed (new users have no reminder email yet)
             });
             await loadMeds();
             setScreen("profile");
