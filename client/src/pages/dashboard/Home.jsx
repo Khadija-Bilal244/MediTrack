@@ -1,4 +1,6 @@
-export default function Home({ user, meds, toggleTaken }) {
+import ReminderEmailCard from "../../components/reminders/ReminderEmailCard";
+
+export default function Home({ user, meds, toggleTaken, onUserUpdate }) {
   const takenCount   = meds.filter(m => m.taken).length;
   const adherencePct = meds.length > 0 ? Math.round((takenCount / meds.length) * 100) : 0;
   const initials     = user ? (user.firstName?.[0] + (user.lastName?.[0] || "")).toUpperCase() : "JD";
@@ -98,6 +100,8 @@ export default function Home({ user, meds, toggleTaken }) {
           </div>
         )}
       </div>
+      {/* Email Reminder Settings */}
+      <ReminderEmailCard user={user} onUserUpdate={onUserUpdate} />
     </div>
   );
 }
