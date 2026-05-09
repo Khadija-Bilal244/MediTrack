@@ -9,11 +9,13 @@ import HeartRisk   from "../pages/dashboard/HeartRisk";   // ← NEW
 import Caregivers  from "../pages/dashboard/Caregivers";
 import { markTakenAPI, getMedicationsAPI, autoMarkMissedAPI } from "../api/medicationAPI";
 
-export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
+export default function MediTrackDashboard({ user, setUser, meds, setMeds, onSignOut }) {
   const [activeNav, setActiveNav]         = useState("Home");
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotif] = useState(false);
   const lastDateRef = useRef(new Date().toDateString());
+
+  const handleUserUpdate = (fields) => setUser(prev => ({ ...prev, ...fields }));
 
   const initials     = user ? (user.firstName[0] + (user.lastName?.[0] || "")).toUpperCase() : "JD";
   const takenCount   = meds.filter(m => m.taken).length;
@@ -212,7 +214,7 @@ export default function MediTrackDashboard({ user, meds, setMeds, onSignOut }) {
           </div>
         </div>
 
-        {activeNav === "Home"         && <Home user={user} meds={meds} toggleTaken={toggleTaken} />}
+        {activeNav === "Home"         && <Home user={user} meds={meds} toggleTaken={toggleTaken} onUserUpdate={handleUserUpdate} />}
         {activeNav === "Medications"  && <Medications meds={meds} setMeds={setMeds} />}
         {activeNav === "Side Effects" && <SideEffects meds={meds} />}
         {activeNav === "Reports"      && <Reports />}
